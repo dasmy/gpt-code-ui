@@ -41,13 +41,13 @@ function App() {
   let [messages, setMessages] = useState<Array<MessageDict>>(
     Array.from([
       {
-        text: "Hello! I'm a GPT Code assistant. Ask me to do something for you! Pro tip: you can upload a file and I'll be able to use it.",
-        role: "system",
+        text: "Hello! I am a GPT Code assistant. Ask me to do something for you! Pro tip: you can upload a file and I'll be able to use it.",
+        role: "generator",
         type: "message",
       },
       {
         text: "If I get stuck just type 'reset' and I'll restart the kernel.",
-        role: "system",
+        role: "generator",
         type: "message",
       },
     ])
@@ -77,7 +77,7 @@ function App() {
 
   const handleCommand = (command: string) => {
     if (command == "reset") {
-      addMessage({text: "Restarting the kernel.", type: "message", role: "system"});
+      addMessage({ text: "Restarting the kernel.", type: "message", role: "system" });
       setWaitingForSystem(WaitingStates.StartingKernel);
 
       fetch(`${Config.API_ADDRESS}/restart`, {
@@ -118,21 +118,22 @@ function App() {
         }),
       });
 
-      
-
       const data = await response.json();
       const code = data.code;
 
-      addMessage({ text: code, type: "code", role: "system" });
-      addMessage({ text: data.text, type: "message", role: "system" });
+      addMessage({ text: data.text, type: "message", role: "generator" });
 
       if (response.status != 200) {
         setWaitingForSystem(WaitingStates.Idle);
         return;
       }
       
-      submitCode(code);
-      setWaitingForSystem(WaitingStates.RunningCode);
+      if (!!code) {
+        submitCode(code);
+        setWaitingForSystem(WaitingStates.RunningCode);
+      } else {
+        setWaitingForSystem(WaitingStates.Idle);
+      }
     } catch (error) {
       console.error(
         "There has been a problem with your fetch operation:",
@@ -159,26 +160,8 @@ function App() {
   }
 
   function completeUpload(message: string) {
-    addMessage({
-      text: message,
-      type: "message",
-      role: "system",
-    });
-
+    addMessage({ text: message, type: "message", role: "upload" });
     setWaitingForSystem(WaitingStates.Idle);
-
-    // Inform prompt server
-    fetch(`${Config.WEB_ADDRESS}/inject-context`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        prompt: message,
-      }),
-    })
-      .then(() => {})
-      .catch((error) => console.error("Error:", error));
   }
 
   function startUpload(_: string) {
